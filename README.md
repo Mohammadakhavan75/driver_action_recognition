@@ -1,4 +1,4 @@
-# driver_action_recognition Repository
+# Driver Action Recognition Repository
 Table of Contents
 
 Introduction
