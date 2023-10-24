@@ -20,7 +20,7 @@ from tqdm import tqdm
 import shutil
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
-
+from get_models import get_models
 
 class MyDataset(torch.utils.data.Dataset):
     def __init__(self, imgs_path, transform=None, transform2=None):
@@ -131,39 +131,22 @@ def preprocessing(data_dir, batch_size=32, num_workers=8, image_size=224):
     return train_loader, val_loader, class_names, device
 
 
-def init_model(device,
+def init_model(model_name,
+               layers,
+               device,
                freeze_features=False,
                model_path=None,
                fine_tune=False,
                fine_tune_layers=24):
-    if model_path is None:
-        model = models.mobilenet_v2(pretrained=True)
-        # Replace the last fully connected layer with a new one
-        num_ftrs = model.classifier[1].in_features
-        # model.classifier[1] = nn.Linear(num_ftrs, 5)
-        model.classifier[1] = nn.Linear(num_ftrs, 784)
-        model.classifier.append(nn.Dropout(p=0.2))
-        model.classifier.append(nn.Linear(784,512))
-        model.classifier.append(nn.Dropout(p=0.2))
-        model.classifier.append(nn.Linear(512,128))
-        model.classifier.append(nn.Dropout(p=0.2))
-        model.classifier.append(nn.Linear(128,5))
-        model = model.to(device)
+    
+    get_model = get_models(model_name, layers)
+    model = get_model.get_model()
 
-    else:
-        model = models.mobilenet_v2(pretrained=False)
-        num_ftrs = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(num_ftrs, 784)
-        model.classifier.append(nn.Dropout(p=0.2))
-        model.classifier.append(nn.Linear(784,512))
-        model.classifier.append(nn.Dropout(p=0.2))
-        model.classifier.append(nn.Linear(512,128))
-        model.classifier.append(nn.Dropout(p=0.2))
-        model.classifier.append(nn.Linear(128,5))
+    if model_path is not None:
         state_dict = torch.load(model_path)
-        # load the state dict into the model
         model.load_state_dict(state_dict)
-        model = model.to(device)
+
+    model = model.to(device)
 
     if freeze_features:
         for param in model.features.parameters():
@@ -305,7 +288,8 @@ if __name__ == '__main__':
     fine_tune= False
     fine_tune_layers = 24
     data_dir = "/SSD/DriverActivity/DriverActivityRecognition/Drive&Act/SelectedData/"
-    # model_path = "/home/makhavan/action_recognition/re_train/run/exp-2023-10-17-13-40-37-339340/models/model_params_epoch_0.pt"
+    model_name = "efficient_v2_s"
+    model_layers = [5]
     model_path = None
     
     addr = datetime.today().strftime('%Y-%m-%d-%H-%M-%S-%f')
@@ -318,7 +302,7 @@ if __name__ == '__main__':
     print("Preprocessing data...")
     train_loader, val_loader, class_names, device = preprocessing(data_dir, batch_size=batch_size, image_size=image_size, num_workers=num_workers)
     print("Initializing model...")
-    model, criterion, optimizer, scheduler = init_model(device, model_path=model_path, freeze_features=freeze_features, fine_tune=fine_tune, fine_tune_layers=fine_tune_layers)
+    model, criterion, optimizer, scheduler = init_model(model_name, model_layers, device, model_path=model_path, freeze_features=freeze_features, fine_tune=fine_tune, fine_tune_layers=fine_tune_layers)
     print("Start training...")
     train_model(train_loader, val_loader, model, criterion, optimizer, scheduler, device, model_save_path, num_epochs)
 
@@ -332,6 +316,6 @@ if __name__ == '__main__':
     if not os.path.exists(model_save_path):
         os.makedirs(model_save_path, exist_ok=True)
 
-    model, criterion, optimizer, scheduler = init_model(device, model_path=model_path, freeze_features=freeze_features, fine_tune=fine_tune, fine_tune_layers=fine_tune_layers)
+    model, criterion, optimizer, scheduler = init_model(model_name, model_layers, device, model_path=model_path, freeze_features=freeze_features, fine_tune=fine_tune, fine_tune_layers=fine_tune_layers)
     print("Start finetunning...")
     train_model(train_loader, val_loader, model, criterion, optimizer, scheduler, device, model_save_path, num_epochs)
