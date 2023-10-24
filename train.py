@@ -149,13 +149,22 @@ def init_model(model_name,
     model = model.to(device)
 
     if freeze_features:
-        for param in model.features.parameters():
-            param.requires_grad = False
+        if "vit" in model_name:
+            for param in model.encoder.parameters():
+                param.requires_grad = False
+        else:
+            for param in model.features.parameters():
+                param.requires_grad = False
 
     if fine_tune:
-        params = list(model.features.parameters())
-        for param in params[:-fine_tune_layers]:
-            param.requires_grad = False
+        if "vit" in model_name:
+            params = list(model.features.parameters())
+            for param in params[:-fine_tune_layers]:
+                param.requires_grad = False
+        else:
+            params = list(model.features.parameters())
+            for param in params[:-fine_tune_layers]:
+                param.requires_grad = False
         
         optimizer_ft = optim.Adam(model.parameters(), lr=0.00001)
         criterion = nn.CrossEntropyLoss()
@@ -288,7 +297,7 @@ if __name__ == '__main__':
     fine_tune= False
     fine_tune_layers = 24
     data_dir = "/SSD/DriverActivity/DriverActivityRecognition/Drive&Act/SelectedData/"
-    model_name = "mobilenet_v3_small"
+    model_name = "vit_b_16"
     model_layers = [5]
     model_path = None
     

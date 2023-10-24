@@ -36,23 +36,23 @@ class get_models:
 
         if self.name == "vit_b_16":
             model = models.vit_b_16(pretrained=True)
-            num_ftrs = model.classifier[-1].in_features
+            num_ftrs = model.heads[-1].in_features
         
         if self.name == "vit_b_32":
             model = models.vit_b_32(pretrained=True)
-            num_ftrs = model.classifier[-1].in_features
+            num_ftrs = model.heads[-1].in_features
 
         if self.name == "vit_l_16":
             model = models.vit_l_16(pretrained=True)
-            num_ftrs = model.classifier[-1].in_features
+            num_ftrs = model.heads[-1].in_features
 
         if self.name == "vit_l_32":
             model = models.vit_l_32(pretrained=True)
-            num_ftrs = model.classifier[-1].in_features
+            num_ftrs = model.heads[-1].in_features
 
         if self.name == "vit_h_14":
             model = models.vit_h_14(pretrained=True)
-            num_ftrs = model.classifier[-1].in_features
+            num_ftrs = model.heads[-1].in_features
         
         if self.name == "mobilenet_v2":
             model = models.mobilenet_v2(pretrained=True)
@@ -110,12 +110,21 @@ class get_models:
             model = models.efficientnet_b7(pretrained=True)
             num_ftrs = model.classifier[-1].in_features
 
-        if len(self.layers) > 1:
-            model.classifier[-1] = nn.Linear(num_ftrs, self.layers[0])
-            for i in range(len(self.layers)-1):
-                model.classifier.append(nn.Dropout(p=0.2))
-                model.classifier.append(nn.Linear(self.layers[i], self.layers[i+1]))
+        if "vit" in self.name:
+            if len(self.layers) > 1:
+                model.heads[-1] = nn.Linear(num_ftrs, self.layers[0])
+                for i in range(len(self.layers)-1):
+                    model.heads.append(nn.Dropout(p=0.2))
+                    model.heads.append(nn.Linear(self.layers[i], self.layers[i+1]))
+            else:
+                model.heads[-1] = nn.Linear(num_ftrs, self.layers[0])
         else:
-            model.classifier[-1] = nn.Linear(num_ftrs, self.layers[0])
-            
+            if len(self.layers) > 1:
+                model.classifier[-1] = nn.Linear(num_ftrs, self.layers[0])
+                for i in range(len(self.layers)-1):
+                    model.classifier.append(nn.Dropout(p=0.2))
+                    model.classifier.append(nn.Linear(self.layers[i], self.layers[i+1]))
+            else:
+                model.classifier[-1] = nn.Linear(num_ftrs, self.layers[0])
+                
         return model
