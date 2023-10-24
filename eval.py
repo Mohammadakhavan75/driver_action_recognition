@@ -121,7 +121,7 @@ def eval(val_loader,
             _, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
             acc = (torch.sum(preds == labels.data).detach().cpu().numpy())/len(preds)
-            eval_losses.append(loss)
+            eval_losses.append(loss.item())
             eval_acc.append(acc)
 
     time_elapsed = time.time() - since
