@@ -5,7 +5,14 @@ class get_models:
     def __init__(self, name, layers):
         self.name = name
         self.layers = layers
-
+    
+    def possible_models(self):
+        print("These models are supported:\n\
+              resnet18, resnet34, resnet50, resnet101, resnet152,\n\
+              vit_b_16, vit_b_32, vit_l_16, vit_l_32, vit_h_14,\n\
+              mobilenet_v2, mobilenet_v3_small, mobilenet_v3_large,\n\
+              efficient_v2_s, efficient_v2_m, efficient_v2_l, efficient_b0-7")
+        
     def get_model(self):
         if self.name == "resnet18":
             model = models.resnet18(pretrained=True)

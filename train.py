@@ -288,7 +288,7 @@ if __name__ == '__main__':
     fine_tune= False
     fine_tune_layers = 24
     data_dir = "/SSD/DriverActivity/DriverActivityRecognition/Drive&Act/SelectedData/"
-    model_name = "efficient_v2_s"
+    model_name = "mobilenet_v3_small"
     model_layers = [5]
     model_path = None
     
