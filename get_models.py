@@ -7,6 +7,54 @@ class get_models:
         self.layers = layers
 
     def get_model(self):
+        if self.name == "resnet18":
+            model = models.resnet18(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+        
+        if self.name == "resnet34":
+            model = models.resnet34(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "resnet50":
+            model = models.resnet50(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "resnet101":
+            model = models.resnet101(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "resnet152":
+            model = models.resnet152(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "vit_b_16":
+            model = models.vit_b_16(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+        
+        if self.name == "vit_b_32":
+            model = models.vit_b_32(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "vit_l_16":
+            model = models.vit_l_16(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "vit_l_32":
+            model = models.vit_l_32(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "vit_h_14":
+            model = models.vit_h_14(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+        
+        if self.name == "mobilenet_v3_small":
+            model = models.mobilenet_v3_small(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
+        if self.name == "mobilenet_v3_large":
+            model = models.mobilenet_v3_large(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
         if self.name == "efficient_v2_s":
             model = models.efficientnet_v2_s(pretrained=True)
             num_ftrs = model.classifier[1].in_features
