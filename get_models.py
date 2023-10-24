@@ -47,6 +47,10 @@ class get_models:
             model = models.vit_h_14(pretrained=True)
             num_ftrs = model.classifier[1].in_features
         
+        if self.name == "mobilenet_v2":
+            model = models.mobilenet_v2(pretrained=True)
+            num_ftrs = model.classifier[1].in_features
+
         if self.name == "mobilenet_v3_small":
             model = models.mobilenet_v3_small(pretrained=True)
             num_ftrs = model.classifier[1].in_features
@@ -107,3 +111,4 @@ class get_models:
         else:
             model.classifier[1] = nn.Linear(num_ftrs, self.layers[0])
             
+        return model
