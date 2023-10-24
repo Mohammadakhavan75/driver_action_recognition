@@ -270,6 +270,7 @@ def train_model(train_loader,
                 acc = (torch.sum(preds == labels.data).detach().cpu().numpy())/len(preds)
                 writer.add_scalar("Loss/eval", loss.item(), global_eval_iter)
                 writer.add_scalar("Acc/eval", acc, global_eval_iter)
+                global_eval_iter += 1
                 # backward + optimize only if in training phase
                 #loss.backward()
             # statistics
