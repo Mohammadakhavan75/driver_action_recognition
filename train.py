@@ -3,132 +3,30 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-import torch.backends.cudnn as cudnn
 import numpy as np
-import torchvision
-from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
 import time
 import os
-import cv2
-import PIL
-import albumentations as A
-from albumentations.pytorch.transforms import ToTensorV2
-from albumentations.augmentations.blur import transforms as a_t
-import glob
 from tqdm import tqdm
-import shutil
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from get_models import get_models
+import argparse
+from preprocessing import preprocessing
+from data_loader import dataset_folder, data_loader
+def parsing():
+    parser = argparse.ArgumentParser(description='',
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--img_path', help='Path for image file', type=str, default=None)
+    parser.add_argument('--vid_path', help='Path for video file', type=str, default=None)
+    parser.add_argument('--folder_path', help='Path for video file', type=str, default=None)
+    parser.add_argument('--model_path', help='Model path file', type=str, required=True)
+    parser.add_argument('--device', help='Device can be cuda or cpu or None', type=str, default=None)
+    parser.add_argument('--gpu_num', help='GPU number', type=int, default=0)
+    args = parser.parse_args()
+    args.armnn_delegate = None
 
-class MyDataset(torch.utils.data.Dataset):
-    def __init__(self, imgs_path, transform=None, transform2=None):
-        self.data_paths = []
-        self.label_paths = []
-        self.transform = transform
-        self.transform2 = transform2
+    return args
 
-        for folder in os.listdir(imgs_path):
-            class_name = folder
-            folder_path = os.path.join(imgs_path, folder)
-            for img_name in sorted(os.listdir(folder_path)):
-                full_path = os.path.join(folder_path, img_name)
-                self.data_paths.append([full_path, class_name])
-
-        self.classes = {"drinking" : 0, "eating": 1,
-                           'interacting_with_phone': 2, 'sitting_still': 3,
-                             'talking_on_phone': 4}
-    def __len__(self):
-        return len(self.data_paths)
-
-    def __getitem__(self, idx):
-        img, class_name = self.data_paths[idx]
-        img = PIL.Image.open(img)
-        if self.transform is not None:
-            img = np.array(img)
-            img = self.transform(image=img)['image']
-            img = PIL.Image.fromarray(img)
-            
-        img = self.transform2(img)
-        class_id = self.classes[class_name]
-        class_id = torch.tensor(class_id)
-        
-        return img, class_id
-
-
-def preprocessing(data_dir, batch_size=32, num_workers=8, image_size=224):
-    data_transforms = transforms.Compose([
-        transforms.Resize(224),
-        # transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-    Image_transform = A.Compose([
-        A.Resize(image_size, image_size, p=1),
-        a_t.GaussianBlur(
-            blur_limit=(3, 3), sigma_limit=0, always_apply=False, p=0.5),
-        A.augmentations.transforms.RandomBrightnessContrast(
-            brightness_limit=0.1,
-            contrast_limit=0.1,
-            brightness_by_max=True,
-            always_apply=False,
-            p=0.5),
-        A.augmentations.transforms.RandomGamma(
-            gamma_limit=(80, 120), eps=None, always_apply=False, p=0.5),
-        A.augmentations.transforms.RandomShadow(shadow_roi=(0, 0.5, 1, 1),
-                                                num_shadows_lower=1,
-                                                num_shadows_upper=2,
-                                                shadow_dimension=5,
-                                                always_apply=False,
-                                                p=0.5),
-        A.augmentations.transforms.ColorJitter(brightness=0.1,
-                                               contrast=0.1,
-                                               saturation=0.2,
-                                               hue=0.2,
-                                               always_apply=False,
-                                               p=0.5),
-        A.augmentations.transforms.GaussNoise(var_limit=(10.0, 50.0),
-                                              mean=0,
-                                              per_channel=True,
-                                              always_apply=False,
-                                              p=0.5),
-        A.augmentations.transforms.HueSaturationValue(hue_shift_limit=20,
-                                                      sat_shift_limit=30,
-                                                      val_shift_limit=20,
-                                                      always_apply=False,
-                                                      p=0.5),
-        # ToTensorV2()
-    ])
-
-    # full_dataset = datasets.ImageFolder(os.path.join(data_dir),
-    #                                     Image_transform,
-    #                                     data_transforms)
-    full_dataset = MyDataset(os.path.join(data_dir),
-                                        Image_transform,
-                                        data_transforms)
-
-    train_size = int(0.8 * len(full_dataset))
-    val_size = len(full_dataset) - train_size
-
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        full_dataset, [train_size, val_size])
-
-    train_loader = torch.utils.data.DataLoader(train_dataset,
-                                               batch_size=batch_size,
-                                               shuffle=True,
-                                               num_workers=num_workers)
-    val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=batch_size,
-                                             shuffle=True,
-                                             num_workers=num_workers)
-
-    class_names = full_dataset.classes
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    return train_loader, val_loader, class_names, device
 
 
 def init_model(model_name,
@@ -300,7 +198,8 @@ if __name__ == '__main__':
     model_name = "vit_b_16"
     model_layers = [5]
     model_path = None
-    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     addr = datetime.today().strftime('%Y-%m-%d-%H-%M-%S-%f')
     save_path = './run/exp-' + addr + '/'
     model_save_path = save_path + 'models/'
@@ -308,8 +207,18 @@ if __name__ == '__main__':
         os.makedirs(model_save_path, exist_ok=True)
 
     writer = SummaryWriter(save_path)
+
+    args = parsing()
     print("Preprocessing data...")
-    train_loader, val_loader, class_names, device = preprocessing(data_dir, batch_size=batch_size, image_size=image_size, num_workers=num_workers)
+    preproc = preprocessing(image_size=image_size, num_transfroms=3)
+    img_transforms_torch, img_augmentations = preproc.loading_transforms()
+    
+    if args.folder_path is not None:
+        dataset = dataset_folder(imgs_path=data_dir, transform=img_transforms_torch, augmentations=img_augmentations)
+
+    loader = data_loader(dataset=dataset, split=0.8, batch_size=batch_size, num_workers=num_workers)
+    train_loader, val_loader = loader.loader()
+
     print("Initializing model...")
     model, criterion, optimizer, scheduler = init_model(model_name, model_layers, device, model_path=model_path, freeze_features=freeze_features, fine_tune=fine_tune, fine_tune_layers=fine_tune_layers)
     print("Start training...")
