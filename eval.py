@@ -1,25 +1,13 @@
 # eval
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.optim import lr_scheduler
-import torch.backends.cudnn as cudnn
 import numpy as np
-import torchvision
-from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
+from torchvision import transforms
 import time
 import os
-import cv2
 import PIL
-import albumentations as A
-from albumentations.pytorch.transforms import ToTensorV2
-from albumentations.augmentations.blur import transforms as a_t
-import glob
 from tqdm import tqdm
-import shutil
-from torch.utils.tensorboard import SummaryWriter
-from datetime import datetime
+from get_models import get_models
 
 
 class MyDataset(torch.utils.data.Dataset):
@@ -59,8 +47,8 @@ class MyDataset(torch.utils.data.Dataset):
 
 def preprocessing(data_dir, batch_size=32, num_workers=8, image_size=224):
     data_transforms = transforms.Compose([
-        transforms.Resize(224),
-        # transforms.CenterCrop(224),
+        transforms.Resize(image_size),
+        transforms.CenterCrop(image_size),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -77,27 +65,28 @@ def preprocessing(data_dir, batch_size=32, num_workers=8, image_size=224):
     class_names = full_dataset.classes
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = 'cpu'
 
     return val_loader, class_names, device
 
 
-def load_model(device,
-               model_path=None):
+def load_model(model_name,
+               layers,
+               model_path,
+               device
+               ):
         
-    model = models.mobilenet_v2(pretrained=False)
-    num_ftrs = model.classifier[1].in_features
-    model.classifier[1] = nn.Linear(num_ftrs, 784)
-    model.classifier.append(nn.Dropout(p=0.2))
-    model.classifier.append(nn.Linear(784,512))
-    model.classifier.append(nn.Dropout(p=0.2))
-    model.classifier.append(nn.Linear(512,128))
-    model.classifier.append(nn.Dropout(p=0.2))
-    model.classifier.append(nn.Linear(128,5))
+    get_model = get_models(model_name, layers)
+    model = get_model.get_model()
+
     state_dict = torch.load(model_path)
-    # load the state dict into the model
     model.load_state_dict(state_dict)
-    model = model.to(device)
+
     criterion = nn.CrossEntropyLoss()
+
+    model = model.to(device)
+    criterion = criterion.to(device)
+
     
     return model, criterion
 
@@ -108,7 +97,6 @@ def eval(val_loader,
         device):
     
     since = time.time()
-    phase='val'
     model.eval()
     eval_losses = []
     eval_acc = []
@@ -134,11 +122,13 @@ if __name__ == '__main__':
     image_size=224
     num_workers=16
     data_dir = "/SSD/DriverActivity/DriverActivityRecognition/Drive&Act/SelectedData/"
-    model_path = "/home/makhavan/action_recognition/re_train/run/exp-2023-10-17-16-13-22-342059/models/best_params.pt"
+    model_path = "/home/makhavan/driver_action_recognition/run/exp-2023-10-24-18-03-41-530238/models/best_params.pt"
+    model_name = "vit_b_16"
+    model_layers = [5]
     
     print("Preprocessing data...")
     val_loader, class_names, device = preprocessing(data_dir, batch_size=batch_size, image_size=image_size, num_workers=num_workers)
     print("Loading pre-train model...")
-    model, criterion = load_model(device, model_path=model_path)
+    model, criterion = load_model(model_name, model_layers, model_path, device)
     print("Start evaluating...")
     eval(val_loader, model, criterion, device)
